@@ -1,0 +1,29 @@
+import Header from "./components/Header";
+import Footer from "./components/footer/Footer";
+import React from "react";
+import Home from "./components/Home";
+import { Outlet, useNavigation } from "react-router-dom";
+
+
+function App() {
+  const navigation = useNavigation();
+  
+
+
+
+  return (
+    <>
+      <Header />
+      {navigation.state === "loading" ? (
+            <div className="flex items-center justify-center min-h-screen">
+        <span className="text-xl font-semibold">Loading products...</span>
+      </div>
+      ) : (<Outlet />)}
+      
+      
+      <Footer />
+    </>
+  );
+}
+
+export default App;
