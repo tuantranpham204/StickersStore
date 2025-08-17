@@ -46,6 +46,13 @@ public class OrderProductController {
 
     }
 
+    @Operation(summary = "get all cart products")
+    @GetMapping("/cart")
+    public ResponseEntity<ApiResponse> getAllCartProducts() {
+        ApiResponse response = ApiResponse.succeed(orderProductService.getAllCartProducts());
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
 
++
 
 }

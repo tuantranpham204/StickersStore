@@ -6,7 +6,9 @@ import com.example.stickerstore.model.dto.response.OrderResponse;
 public interface OrderService {
     OrderResponse createEmptyCart();
 
-    OrderResponse purchaseOrder(Long orderId);
+    OrderResponse purchaseOrder();
 
     OrderResponse getCart();
+
+    OrderResponse getOrderById(Long orderId);
 }

@@ -12,5 +12,5 @@ public interface OrderProductService {
 
     List<OrderProductResponse> getAllOrderProductsByOrderId(Long orderId);
 
-
+    List<OrderProductResponse> getAllCartProducts();
 }

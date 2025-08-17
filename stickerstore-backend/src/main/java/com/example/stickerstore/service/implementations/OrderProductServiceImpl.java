@@ -17,6 +17,7 @@ import com.example.stickerstore.service.OrderService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.aspectj.weaver.ast.Or;
 import org.modelmapper.ModelMapper;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -31,72 +32,39 @@ import java.util.stream.Collectors;
 public class OrderProductServiceImpl implements OrderProductService {
     private final OrderProductRepository orderProductRepository;
     private final ProductRepository productRepository;
-    private final OrderService orderService;
     private final ModelMapper modelMapper;
     private final OrderRepository orderRepository;
+    private final OrderService orderService;
 
     @Override
     @Transactional
     public OrderProductResponse createOrderProduct(OrderProductRequest orderProductRequest, Long productId) {
-        Order cart = modelMapper.map(orderService.getCart(), Order.class);
+        List<Order> cartList = orderRepository.findByPurchased(false);
+        if (cartList.size() != 1) throw new AppException(ErrorCode.INVALID_NUMBER_OF_CART);
+        Order cart = cartList.get(0);
 
-        // Check if product exists for response mapping
-        OrderProduct existingProduct = null;
-        for (OrderProduct orderProduct : cart.getOrderProducts()) {
-            if (orderProduct.getProduct().getProductId().equals(productId)) {
-                existingProduct = orderProduct;
-                break;
-            }
-        }
+        Optional<OrderProduct> orderProductOptional= orderProductRepository.findByOrderIdAndProductId(cart.getOrderId(), productId);
 
-        if (existingProduct != null) {
-            // Update existing - use the native upsert
-            orderProductRepository.upsertOrderProduct(
-                    LocalDateTime.now(),
-                    cart.getOrderId(),
-                    productId,
-                    orderProductRequest.getSubQuantity(),
-                    LocalDateTime.now()
-            );
-
-            // Update cart totals
-            cart.setTotalQuantity(cart.getTotalQuantity() + orderProductRequest.getSubQuantity());
-            cart.setTotalPrice(cart.getTotalPrice() + (double)orderProductRequest.getSubQuantity() * existingProduct.getProduct().getProductUnitPrice());
-            orderRepository.save(cart);
-
-            // Update the existing object for response
-            existingProduct.setSubQuantity(existingProduct.getSubQuantity() + orderProductRequest.getSubQuantity());
-            existingProduct.setUpdatedDate(LocalDateTime.now());
-
-            return modelMapper.map(existingProduct, OrderProductResponse.class);
+        if (orderProductOptional.isPresent()) {
+            OrderProduct orderProduct = orderProductOptional.get();
+            return modelMapper.map(updateOrderProductSubPriceAndUpdatedDate(cart, orderProduct, orderProductRequest), OrderProductResponse.class);
         } else {
-            // Create new product
             Product product = productRepository.findById(productId).orElseThrow(
                     () -> new ResourceNotFoundException("Product id", "product", productId)
             );
+            OrderProduct orderProduct = new OrderProduct();
+            orderProduct.setSubQuantity(orderProductRequest.getSubQuantity());
+            orderProduct.setProduct(product);
+            orderProduct.setOrder(cart);
+            orderProduct.setUpdatedDate(LocalDateTime.now());
+            orderProduct.setCreatedDate(LocalDateTime.now());
+            orderProduct =  orderProductRepository.save(orderProduct);
 
-            // Use native upsert (will insert since it doesn't exist)
-            orderProductRepository.upsertOrderProduct(
-                    LocalDateTime.now(),
-                    cart.getOrderId(),
-                    productId,
-                    orderProductRequest.getSubQuantity(),
-                    LocalDateTime.now()
-            );
-
-            // Update cart totals
-            cart.setTotalQuantity(cart.getTotalQuantity() + orderProductRequest.getSubQuantity());
-            cart.setTotalPrice(cart.getTotalPrice() + (double)orderProductRequest.getSubQuantity() * product.getProductUnitPrice());
+            cart.setTotalQuantity(cart.getTotalQuantity() + orderProduct.getSubQuantity());
+            cart.setTotalPrice(cart.getTotalPrice() + (double)orderProduct.getSubQuantity() * product.getProductUnitPrice());
+            cart.setUpdatedDate(LocalDateTime.now());
             orderRepository.save(cart);
-
-            // Create response object
-            OrderProduct newOrderProduct = new OrderProduct();
-            newOrderProduct.setProduct(product);
-            newOrderProduct.setSubQuantity(orderProductRequest.getSubQuantity());
-            newOrderProduct.setCreatedDate(LocalDateTime.now());
-            newOrderProduct.setUpdatedDate(LocalDateTime.now());
-
-            return modelMapper.map(newOrderProduct, OrderProductResponse.class);
+            return modelMapper.map(orderProduct, OrderProductResponse.class);
         }
     }
 
@@ -117,4 +85,26 @@ public class OrderProductServiceImpl implements OrderProductService {
           orderProduct -> modelMapper.map(orderProduct, OrderProductResponse.class)
         ).collect(Collectors.toList());
     }
+
+    @Override
+    public List<OrderProductResponse> getAllCartProducts() {
+        List<Order> cartList = orderRepository.findByPurchased(false);
+        if (cartList.size() != 1) throw new AppException(ErrorCode.INVALID_NUMBER_OF_CART);
+        Order cart = cartList.get(0);
+        return orderProductRepository.findByOrderId(cart.getOrderId()).stream().map(
+                orderProduct -> modelMapper.map(orderProduct, OrderProductResponse.class)
+        ).collect(Collectors.toList());
+    }
+
+
+    private OrderProduct updateOrderProductSubPriceAndUpdatedDate(Order cart, OrderProduct orderProduct, OrderProductRequest orderProductRequest) {
+        Long modifiedSubQuantity = orderProduct.getSubQuantity() + orderProductRequest.getSubQuantity();
+        orderProduct.setSubQuantity(modifiedSubQuantity);
+        cart.setTotalQuantity(cart.getTotalQuantity() + orderProduct.getSubQuantity());
+        cart.setTotalPrice(cart.getTotalPrice() + (double)orderProduct.getSubQuantity() * orderProduct.getProduct().getProductUnitPrice());
+        cart.setUpdatedDate(LocalDateTime.now());
+        orderRepository.save(cart);
+        return orderProductRepository.save(orderProduct);
+    }
+
 }

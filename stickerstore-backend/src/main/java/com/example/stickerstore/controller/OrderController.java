@@ -2,6 +2,7 @@ package com.example.stickerstore.controller;
 
 import com.example.stickerstore.model.dto.request.OrderProductRequest;
 import com.example.stickerstore.model.dto.response.ApiResponse;
+import com.example.stickerstore.model.dto.response.OrderResponse;
 import com.example.stickerstore.model.entity.OrderProduct;
 import com.example.stickerstore.repository.OrderProductRepository;
 import com.example.stickerstore.repository.OrderRepository;
@@ -30,9 +31,9 @@ public class OrderController {
 
 
     @Operation(summary = "purchase cart")
-    @PutMapping("/{orderId}")
-    public ResponseEntity<ApiResponse> purchaseOrder(@PathVariable("orderId") Long orderId) {
-        ApiResponse  response = ApiResponse.succeed(orderService.purchaseOrder(orderId));
+    @PutMapping()
+    public ResponseEntity<ApiResponse> purchaseOrder() {
+        ApiResponse  response = ApiResponse.succeed(orderService.purchaseOrder());
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
@@ -40,6 +41,13 @@ public class OrderController {
     @GetMapping("/cart")
     public ResponseEntity<ApiResponse> getCart() {
         ApiResponse response = ApiResponse.succeed(orderService.getCart());
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @Operation(summary = "get order by order id")
+    @GetMapping("/{orderId}")
+    public ResponseEntity<ApiResponse> getOrderByOrderId(@PathVariable("orderId") Long orderId) {
+        ApiResponse response = ApiResponse.succeed(orderService.getOrderById(orderId));
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 }

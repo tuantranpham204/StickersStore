@@ -29,16 +29,16 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public OrderResponse purchaseOrder(Long orderId) {
-        Order order = orderRepository.findById(orderId).orElseThrow(
-                () -> new ResourceNotFoundException("order id", "order", orderId)
-        );
-        order.setPurchased(true);
-        order.setUpdatedDate(LocalDateTime.now());
-        order.setPurchasedDate(LocalDateTime.now());
+    public OrderResponse purchaseOrder() {
+        List<Order> cartList = orderRepository.findByPurchased(false);
+        if (cartList.size() != 1) throw new AppException(ErrorCode.INVALID_NUMBER_OF_CART);
+        Order cart = cartList.get(0);
+        cart.setPurchased(true);
+        cart.setUpdatedDate(LocalDateTime.now());
+        cart.setPurchasedDate(LocalDateTime.now());
         Order emptyCart = new Order();
         orderRepository.save(emptyCart);
-        return modelMapper.map(orderRepository.save(order), OrderResponse.class);
+        return modelMapper.map(orderRepository.save(cart), OrderResponse.class);
     }
 
     @Override
@@ -46,5 +46,14 @@ public class OrderServiceImpl implements OrderService {
         List<Order> cartList = orderRepository.findByPurchased(false);
         if (cartList.size() != 1) throw new AppException(ErrorCode.INVALID_NUMBER_OF_CART);
         return modelMapper.map(cartList.get(0), OrderResponse.class);
+    }
+
+    @Override
+    public OrderResponse getOrderById(Long orderId) {
+
+        Order order = orderRepository.findById(orderId).orElseThrow(
+                () -> new ResourceNotFoundException("order id", "order", orderId)
+        );
+        return  modelMapper.map(order, OrderResponse.class);
     }
 }

@@ -2,6 +2,7 @@ package com.example.stickerstore.model.entity;
 
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -14,6 +15,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder()
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class OrderProduct {
 
     @Id
@@ -21,11 +23,12 @@ public class OrderProduct {
     private Long orderProductId;
 
     @JsonIgnore
-    @OneToOne(fetch = FetchType.LAZY,cascade = {CascadeType.PERSIST,CascadeType.MERGE,CascadeType.DETACH,CascadeType.REFRESH})
+    @ManyToOne(fetch = FetchType.LAZY,cascade = {CascadeType.PERSIST,CascadeType.MERGE,CascadeType.DETACH,CascadeType.REFRESH})
     @JoinColumn(name = "order_id")
     private Order order;
 
-    @OneToOne(fetch = FetchType.LAZY,
+//    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY,
             cascade = {CascadeType.PERSIST,CascadeType.MERGE,CascadeType.DETACH,CascadeType.REFRESH}
     )
     @JoinColumn(name = "product_id")
@@ -37,4 +40,5 @@ public class OrderProduct {
     private LocalDateTime createdDate;
 
     private LocalDateTime updatedDate;
+
 }
